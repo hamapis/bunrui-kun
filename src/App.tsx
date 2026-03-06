@@ -1,5 +1,6 @@
-import { For, Show, createEffect, createSignal, onCleanup } from 'solid-js'
+import { For, Show, createEffect, createSignal, onCleanup, onMount } from 'solid-js'
 import { toPng } from 'html-to-image'
+import { compressToEncodedURIComponent, decompressFromEncodedURIComponent } from 'lz-string'
 import './App.scss'
 
 type IconState = {
@@ -10,6 +11,7 @@ type IconState = {
   yPercent: number
   size: number
   source: 'x' | 'upload'
+  xId?: string
 }
 
 type ToastState = {
@@ -17,10 +19,96 @@ type ToastState = {
   id: number
 }
 
+type PersistedState = {
+  v: number
+  t: string
+  b: string
+  l: string
+  r: string
+  i: Array<{
+    x: string
+    px: number
+    py: number
+    s: number
+  }>
+}
+
 const EXPORT_WIDTH = 1600
 const EXPORT_HEIGHT = 900
 const DEFAULT_ICON_SIZE = 84
 const MAX_ICONS = 8
+const STATE_VERSION = 1
+const STATE_QUERY_KEY = 'state'
+
+const DEFAULT_TOP_LABEL = '憧れ'
+const DEFAULT_BOTTOM_LABEL = '親近感'
+const DEFAULT_LEFT_LABEL = 'ゆるめ'
+const DEFAULT_RIGHT_LABEL = 'きりっと'
+
+function avatarUrlFromXId(xId: string) {
+  return `https://unavatar.io/x/${encodeURIComponent(xId)}`
+}
+
+function decodeStateParam(raw: string): PersistedState | null {
+  const decompressed = decompressFromEncodedURIComponent(raw)
+  if (decompressed) {
+    try {
+      return JSON.parse(decompressed) as PersistedState
+    } catch {
+      return null
+    }
+  }
+
+  // Backward compatibility: allow old plain JSON query values.
+  try {
+    const legacy = JSON.parse(raw) as {
+      version?: number
+      topLabel?: string
+      bottomLabel?: string
+      leftLabel?: string
+      rightLabel?: string
+      icons?: Array<{
+        label?: string
+        xPercent?: number
+        yPercent?: number
+        size?: number
+      }>
+    }
+
+    if (legacy.version !== STATE_VERSION) {
+      return null
+    }
+
+    const items = Array.isArray(legacy.icons)
+      ? legacy.icons
+          .map((icon) => {
+            const x = String(icon.label || '').replace(/^@/, '').trim()
+            if (!x) {
+              return null
+            }
+
+            return {
+              x,
+              px: clamp(Number(icon.xPercent) || 50, 0, 100),
+              py: clamp(Number(icon.yPercent) || 50, 0, 100),
+              s: clamp(Number(icon.size) || DEFAULT_ICON_SIZE, 36, 180),
+            }
+          })
+          .filter((icon): icon is { x: string; px: number; py: number; s: number } => Boolean(icon))
+      : []
+
+    return {
+      v: STATE_VERSION,
+      t: legacy.topLabel ?? DEFAULT_TOP_LABEL,
+      b: legacy.bottomLabel ?? DEFAULT_BOTTOM_LABEL,
+      l: legacy.leftLabel ?? DEFAULT_LEFT_LABEL,
+      r: legacy.rightLabel ?? DEFAULT_RIGHT_LABEL,
+      i: items,
+    }
+  } catch {
+    return null
+  }
+}
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value))
@@ -29,12 +117,11 @@ function clamp(value: number, min: number, max: number) {
 function App() {
   let chartRef: HTMLDivElement | undefined
   let exportRef: HTMLDivElement | undefined
-  const uploadedObjectUrls = new Set<string>()
 
-  const [topLabel, setTopLabel] = createSignal('憧れ')
-  const [bottomLabel, setBottomLabel] = createSignal('親近感')
-  const [leftLabel, setLeftLabel] = createSignal('ゆるめ')
-  const [rightLabel, setRightLabel] = createSignal('きりっと')
+  const [topLabel, setTopLabel] = createSignal(DEFAULT_TOP_LABEL)
+  const [bottomLabel, setBottomLabel] = createSignal(DEFAULT_BOTTOM_LABEL)
+  const [leftLabel, setLeftLabel] = createSignal(DEFAULT_LEFT_LABEL)
+  const [rightLabel, setRightLabel] = createSignal(DEFAULT_RIGHT_LABEL)
   const [xId, setXId] = createSignal('')
   const [icons, setIcons] = createSignal<IconState[]>([])
   const [toast, setToast] = createSignal<ToastState | null>(null)
@@ -67,11 +154,105 @@ function App() {
     if (toastTimer) {
       window.clearTimeout(toastTimer)
     }
-    uploadedObjectUrls.forEach((url) => URL.revokeObjectURL(url))
-    uploadedObjectUrls.clear()
   })
 
-  const placeIcon = (payload: { src: string; label: string; source: 'x' | 'upload' }) => {
+  onMount(() => {
+    try {
+      const params = new URLSearchParams(window.location.search)
+      const raw = params.get(STATE_QUERY_KEY)
+      if (!raw) {
+        return
+      }
+
+      const parsed = decodeStateParam(raw)
+      if (!parsed || parsed.v !== STATE_VERSION) {
+        return
+      }
+
+      setTopLabel(parsed.t ?? DEFAULT_TOP_LABEL)
+      setBottomLabel(parsed.b ?? DEFAULT_BOTTOM_LABEL)
+      setLeftLabel(parsed.l ?? DEFAULT_LEFT_LABEL)
+      setRightLabel(parsed.r ?? DEFAULT_RIGHT_LABEL)
+
+      const restoredIcons: IconState[] = Array.isArray(parsed.i)
+        ? parsed.i.slice(0, MAX_ICONS).map((icon): IconState => ({
+            id: crypto.randomUUID(),
+            label: `@${icon.x}`,
+            src: avatarUrlFromXId(icon.x),
+            xId: icon.x,
+            xPercent: clamp(Number(icon.px) || 50, 0, 100),
+            yPercent: clamp(Number(icon.py) || 50, 0, 100),
+            size: clamp(Number(icon.s) || DEFAULT_ICON_SIZE, 36, 180),
+            source: 'x',
+          }))
+        : []
+
+      setIcons(restoredIcons.filter((icon) => icon.src))
+    } catch {
+      showError('URLクエリの復元に失敗しました。')
+    }
+  })
+
+  createEffect(() => {
+    const shareableIcons = icons()
+      .filter((icon) => icon.source === 'x')
+      .map((icon) => ({
+        x: icon.xId ?? icon.label.replace(/^@/, '').trim(),
+        px: Math.round(icon.xPercent * 10) / 10,
+        py: Math.round(icon.yPercent * 10) / 10,
+        s: Math.round(icon.size),
+      }))
+      .filter((icon) => icon.x)
+
+    const snapshot: PersistedState = {
+      v: STATE_VERSION,
+      t: topLabel(),
+      b: bottomLabel(),
+      l: leftLabel(),
+      r: rightLabel(),
+      i: shareableIcons,
+    }
+
+    try {
+      const params = new URLSearchParams(window.location.search)
+      const isDefaultState =
+        topLabel() === DEFAULT_TOP_LABEL &&
+        bottomLabel() === DEFAULT_BOTTOM_LABEL &&
+        leftLabel() === DEFAULT_LEFT_LABEL &&
+        rightLabel() === DEFAULT_RIGHT_LABEL &&
+        shareableIcons.length === 0
+
+      if (isDefaultState) {
+        params.delete(STATE_QUERY_KEY)
+      } else {
+        params.set(STATE_QUERY_KEY, compressToEncodedURIComponent(JSON.stringify(snapshot)))
+      }
+
+      const query = params.toString()
+      const nextUrl = `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`
+      window.history.replaceState(null, '', nextUrl)
+    } catch {
+      // Ignore URL serialization errors.
+    }
+  })
+
+  const resetState = () => {
+    setTopLabel(DEFAULT_TOP_LABEL)
+    setBottomLabel(DEFAULT_BOTTOM_LABEL)
+    setLeftLabel(DEFAULT_LEFT_LABEL)
+    setRightLabel(DEFAULT_RIGHT_LABEL)
+    setXId('')
+    setIcons([])
+    setIsDragging(false)
+    setDraggingIconId(null)
+  }
+
+  const placeIcon = (payload: {
+    src: string
+    label: string
+    source: 'x' | 'upload'
+    xId?: string
+  }) => {
     if (icons().length >= MAX_ICONS) {
       showError(`アイコンは最大 ${MAX_ICONS} 個までです。`)
       return false
@@ -83,6 +264,7 @@ function App() {
         id: crypto.randomUUID(),
         label: payload.label,
         source: payload.source,
+        xId: payload.xId,
         src: payload.src,
         xPercent: 50,
         yPercent: 50,
@@ -98,24 +280,12 @@ function App() {
   }
 
   const clearAllIcons = () => {
-    icons().forEach((icon) => {
-      if (icon.source === 'upload') {
-        URL.revokeObjectURL(icon.src)
-        uploadedObjectUrls.delete(icon.src)
-      }
-    })
     setIcons([])
     setIsDragging(false)
     setDraggingIconId(null)
   }
 
   const removeIcon = (iconId: string) => {
-    const target = icons().find((icon) => icon.id === iconId)
-    if (target?.source === 'upload') {
-      URL.revokeObjectURL(target.src)
-      uploadedObjectUrls.delete(target.src)
-    }
-
     setIcons((prev) => prev.filter((icon) => icon.id !== iconId))
     if (draggingIconId() === iconId) {
       setDraggingIconId(null)
@@ -139,6 +309,14 @@ function App() {
       img.src = src
     })
 
+  const readFileAsDataUrl = (file: File) =>
+    new Promise<string>((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(String(reader.result || ''))
+      reader.onerror = () => reject(new Error('file-read-failed'))
+      reader.readAsDataURL(file)
+    })
+
   const handleXSubmit = async (event: Event) => {
     event.preventDefault()
     const id = xId().trim()
@@ -147,7 +325,7 @@ function App() {
       return
     }
 
-    const avatarUrl = `https://unavatar.io/x/${encodeURIComponent(id)}`
+    const avatarUrl = avatarUrlFromXId(id)
 
     try {
       await validateImage(avatarUrl)
@@ -155,6 +333,7 @@ function App() {
         src: avatarUrl,
         label: `@${id}`,
         source: 'x',
+        xId: id,
       })
       if (added) {
         setXId('')
@@ -171,23 +350,18 @@ function App() {
       return
     }
 
-    const objectUrl = URL.createObjectURL(file)
-    uploadedObjectUrls.add(objectUrl)
-
     try {
-      await validateImage(objectUrl)
+      const dataUrl = await readFileAsDataUrl(file)
+      await validateImage(dataUrl)
       const added = placeIcon({
-        src: objectUrl,
+        src: dataUrl,
         label: file.name || 'uploaded image',
         source: 'upload',
       })
       if (!added) {
-        URL.revokeObjectURL(objectUrl)
-        uploadedObjectUrls.delete(objectUrl)
+        showError(`アイコンは最大 ${MAX_ICONS} 個までです。`)
       }
     } catch {
-      URL.revokeObjectURL(objectUrl)
-      uploadedObjectUrls.delete(objectUrl)
       showError('画像の読み込みに失敗しました。別の画像で試してください。')
     } finally {
       input.value = ''
@@ -313,7 +487,7 @@ function App() {
                   <label class="form-label">X ID からアイコン取得 (Enter)</label>
                   <input
                     class="form-control"
-                    placeholder="example: hamapis"
+                    placeholder="example: elonmusk"
                     value={xId()}
                     onInput={(event) => setXId(event.currentTarget.value)}
                   />
@@ -335,6 +509,9 @@ function App() {
               <div class="text-muted small me-auto me-md-2">
                 {icons().length} / {MAX_ICONS} アイコン
               </div>
+              <button class="btn btn-outline-dark" type="button" onClick={resetState}>
+                状態を初期化
+              </button>
               <button class="btn btn-outline-secondary" type="button" onClick={clearAllIcons}>
                 取り消し (全アイコンを消す)
               </button>
