@@ -77,6 +77,20 @@
     linear-gradient(145deg, #fffdf7 0%, #fff6ec 52%, #fef8f3 100%);
 }
 
+.chart-wrap.is-exporting {
+  width: 1600px !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 2.6rem 3.1rem !important;
+}
+
+.chart-wrap.is-exporting .label-top,
+.chart-wrap.is-exporting .label-bottom,
+.chart-wrap.is-exporting .label-left,
+.chart-wrap.is-exporting .label-right {
+  font-size: 1.34rem !important;
+}
+
 .chart-board {
   position: relative;
   width: 100%;

@@ -33,10 +33,9 @@ type PersistedState = {
   }>
 }
 
-const EXPORT_WIDTH = 1600
-const EXPORT_HEIGHT = 900
 const DEFAULT_ICON_SIZE = 84
-const MAX_ICONS = 8
+const MAX_ICONS = 16
+const EXPORT_FIXED_WIDTH = 1600
 const STATE_VERSION = 1
 const STATE_QUERY_KEY = 'state'
 
@@ -124,6 +123,7 @@ function App() {
   const [rightLabel, setRightLabel] = createSignal(DEFAULT_RIGHT_LABEL)
   const [xId, setXId] = createSignal('')
   const [icons, setIcons] = createSignal<IconState[]>([])
+  const [isExporting, setIsExporting] = createSignal(false)
   const [toast, setToast] = createSignal<ToastState | null>(null)
   const [isDragging, setIsDragging] = createSignal(false)
   const [draggingIconId, setDraggingIconId] = createSignal<string | null>(null)
@@ -422,11 +422,20 @@ function App() {
     }
 
     try {
+      setIsExporting(true)
+      await new Promise((resolve) => window.requestAnimationFrame(resolve))
+
       const dataUrl = await toPng(exportRef, {
         cacheBust: true,
-        pixelRatio: 1,
-        canvasWidth: EXPORT_WIDTH,
-        canvasHeight: EXPORT_HEIGHT,
+        pixelRatio: 2,
+        width: EXPORT_FIXED_WIDTH,
+        canvasWidth: EXPORT_FIXED_WIDTH,
+        style: {
+          width: `${EXPORT_FIXED_WIDTH}px`,
+          maxWidth: 'none',
+          margin: '0',
+          boxSizing: 'border-box',
+        },
       })
 
       const link = document.createElement('a')
@@ -435,6 +444,8 @@ function App() {
       link.click()
     } catch {
       showError('画像の書き出しに失敗しました。もう一度試してください。')
+    } finally {
+      setIsExporting(false)
     }
   }
 
@@ -516,7 +527,7 @@ function App() {
                 取り消し (全アイコンを消す)
               </button>
               <button class="btn btn-success" type="button" onClick={downloadPng}>
-                PNG ダウンロード (1600x900)
+                PNG ダウンロード (高画質)
               </button>
             </div>
 
@@ -560,7 +571,7 @@ function App() {
         </div>
       </section>
 
-      <section class="chart-wrap" ref={exportRef}>
+      <section class="chart-wrap" classList={{ 'is-exporting': isExporting() }} ref={exportRef}>
         <div class="label-top">{topLabel()}</div>
         <div class="label-bottom">{bottomLabel()}</div>
         <div class="label-left">{leftLabel()}</div>
