@@ -1,0 +1,230 @@
+.app-shell {
+  --paper: #fffaf2;
+  --ink: #3f2d2a;
+  --grid: #c9bab1;
+  --frame: #8b5e3c;
+  --accent: #ea7b5d;
+  --panel: #fff6ed;
+
+  color: var(--ink);
+}
+
+.title {
+  font-family: 'Mochiy Pop One', sans-serif;
+  font-size: clamp(1.5rem, 4vw, 2.4rem);
+  letter-spacing: 0.03em;
+}
+
+.subtitle {
+  color: #7e6055;
+}
+
+.controls.card {
+  border: 0;
+  border-radius: 1.2rem;
+  background: linear-gradient(145deg, #fffaf5, var(--panel));
+}
+
+.icon-size-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.75rem;
+}
+
+.icon-size-item {
+  background: rgb(255 255 255 / 75%);
+  border: 1px solid rgb(179 145 127 / 35%);
+  border-radius: 0.85rem;
+  padding: 0.7rem 0.7rem 0.6rem;
+}
+
+.icon-size-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.45rem;
+}
+
+.icon-size-preview {
+  width: 32px;
+  height: 32px;
+  border-radius: 9999px;
+  object-fit: cover;
+  border: 2px solid rgb(255 255 255 / 95%);
+  box-shadow: 0 2px 8px rgb(66 35 25 / 20%);
+}
+
+.icon-size-title {
+  font-weight: 700;
+  line-height: 1.2;
+  font-size: 0.92rem;
+}
+
+.icon-size-value {
+  font-size: 0.8rem;
+  color: #7b5f52;
+}
+
+.chart-wrap {
+  position: relative;
+  width: min(100%, 980px);
+  margin: 0 auto;
+  padding: 2.6rem 3.1rem;
+  border-radius: 1rem;
+  background:
+    radial-gradient(circle at 15% 15%, #ffe8d7 0, #ffe8d700 35%),
+    radial-gradient(circle at 86% 86%, #e8f6ff 0, #e8f6ff00 32%),
+    linear-gradient(145deg, #fffdf7 0%, #fff6ec 52%, #fef8f3 100%);
+}
+
+.chart-board {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: 6px solid var(--frame);
+  border-radius: 0.7rem;
+  background-color: var(--paper);
+  overflow: hidden;
+  touch-action: none;
+  box-shadow: 0 8px 20px rgb(88 55 39 / 14%);
+}
+
+.chart-board::before,
+.chart-board::after {
+  content: '';
+  position: absolute;
+  background-color: rgb(109 77 57 / 55%);
+  z-index: 1;
+}
+
+.chart-board::before {
+  left: 50%;
+  top: 0;
+  width: 2px;
+  height: 100%;
+  transform: translateX(-50%);
+}
+
+.chart-board::after {
+  top: 50%;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  transform: translateY(-50%);
+}
+
+.chart-board {
+  background-image:
+    repeating-linear-gradient(
+      to right,
+      transparent 0,
+      transparent calc(10% - 1px),
+      var(--grid) calc(10% - 1px),
+      var(--grid) 10%
+    ),
+    repeating-linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent calc(10% - 1px),
+      var(--grid) calc(10% - 1px),
+      var(--grid) 10%
+    );
+}
+
+.avatar-token {
+  position: absolute;
+  z-index: 3;
+  transform: translate(-50%, -50%);
+  border-radius: 9999px;
+  border: 3px solid rgb(255 255 255 / 95%);
+  box-shadow: 0 5px 14px rgb(46 24 18 / 28%);
+  object-fit: cover;
+  user-select: none;
+  cursor: grab;
+}
+
+.avatar-token:active {
+  cursor: grabbing;
+}
+
+.label-top,
+.label-bottom,
+.label-left,
+.label-right {
+  position: absolute;
+  font-weight: 700;
+  font-size: clamp(1.06rem, 1.9vw, 1.36rem);
+  color: #5d2f23;
+  background: rgb(255 247 235 / 88%);
+  border: 1px solid rgb(153 102 78 / 35%);
+  border-radius: 9999px;
+  box-shadow: 0 2px 6px rgb(70 40 30 / 12%);
+  text-shadow: 0 1px 0 rgb(255 255 255 / 92%);
+  padding: 0.2rem 0.72rem;
+  backdrop-filter: blur(1px);
+  -webkit-backdrop-filter: blur(1px);
+  z-index: 4;
+}
+
+.label-top,
+.label-bottom {
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.label-top {
+  top: 0.1rem;
+}
+
+.label-bottom {
+  bottom: 0;
+}
+
+.label-left,
+.label-right {
+  top: 50%;
+  transform: translateY(-50%);
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  padding: 0.7rem 0.34rem;
+}
+
+.label-left {
+  left: 0.2rem;
+}
+
+.label-right {
+  right: 0.2rem;
+}
+
+.toast-wrap {
+  position: fixed;
+  right: 1rem;
+  top: 1rem;
+  z-index: 20;
+  animation: toast-in 0.22s ease-out;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 768px) {
+  .chart-wrap {
+    padding: 2.4rem 2.1rem;
+  }
+
+  .label-left,
+  .label-right {
+    font-size: 1rem;
+    padding: 0.58rem 0.3rem;
+  }
+}

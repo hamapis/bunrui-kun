@@ -1,0 +1,23 @@
+:root {
+  font-family: 'M PLUS Rounded 1c', sans-serif;
+  line-height: 1.45;
+  font-weight: 500;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 15% 15%, #ffe8d7 0, #ffe8d700 35%),
+    radial-gradient(circle at 86% 86%, #e8f6ff 0, #e8f6ff00 32%),
+    linear-gradient(145deg, #fffdf7 0%, #fff6ec 52%, #fef8f3 100%);
+}
+
+#root {
+  min-height: 100vh;
+}

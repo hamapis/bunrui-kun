@@ -1,0 +1,27 @@
+{
+  "name": "bunrui-kun",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d dist"
+  },
+  "dependencies": {
+    "bootstrap": "^5.3.8",
+    "html-to-image": "^1.11.13",
+    "modern-css-reset": "^1.4.0",
+    "solid-js": "^1.9.10"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "gh-pages": "^6.3.0",
+    "sass": "^1.97.3",
+    "typescript": "~5.9.3",
+    "vite": "^7.3.1",
+    "vite-plugin-solid": "^2.11.10"
+  }
+}
