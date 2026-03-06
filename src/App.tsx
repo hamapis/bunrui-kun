@@ -35,7 +35,6 @@ type PersistedState = {
 
 const DEFAULT_ICON_SIZE = 84
 const MAX_ICONS = 16
-const EXPORT_FIXED_WIDTH = 1600
 const STATE_VERSION = 1
 const STATE_QUERY_KEY = 'state'
 
@@ -123,7 +122,6 @@ function App() {
   const [rightLabel, setRightLabel] = createSignal(DEFAULT_RIGHT_LABEL)
   const [xId, setXId] = createSignal('')
   const [icons, setIcons] = createSignal<IconState[]>([])
-  const [isExporting, setIsExporting] = createSignal(false)
   const [toast, setToast] = createSignal<ToastState | null>(null)
   const [isDragging, setIsDragging] = createSignal(false)
   const [draggingIconId, setDraggingIconId] = createSignal<string | null>(null)
@@ -421,21 +419,34 @@ function App() {
       return
     }
 
+    let prevWidth = ''
+    let prevMaxWidth = ''
+    let prevMargin = ''
+    let prevBoxSizing = ''
+
     try {
-      setIsExporting(true)
+      const sourceRect = exportRef.getBoundingClientRect()
+      const sourceWidth = Math.ceil(sourceRect.width)
+      const sourceHeight = Math.ceil(sourceRect.height)
+
+      prevWidth = exportRef.style.width
+      prevMaxWidth = exportRef.style.maxWidth
+      prevMargin = exportRef.style.margin
+      prevBoxSizing = exportRef.style.boxSizing
+
+      exportRef.style.width = `${sourceWidth}px`
+      exportRef.style.maxWidth = 'none'
+      exportRef.style.margin = '0'
+      exportRef.style.boxSizing = 'border-box'
+
       await new Promise((resolve) => window.requestAnimationFrame(resolve))
 
       const dataUrl = await toPng(exportRef, {
         cacheBust: true,
         pixelRatio: 2,
-        width: EXPORT_FIXED_WIDTH,
-        canvasWidth: EXPORT_FIXED_WIDTH,
-        style: {
-          width: `${EXPORT_FIXED_WIDTH}px`,
-          maxWidth: 'none',
-          margin: '0',
-          boxSizing: 'border-box',
-        },
+        skipAutoScale: true,
+        canvasWidth: sourceWidth,
+        canvasHeight: sourceHeight,
       })
 
       const link = document.createElement('a')
@@ -445,7 +456,10 @@ function App() {
     } catch {
       showError('画像の書き出しに失敗しました。もう一度試してください。')
     } finally {
-      setIsExporting(false)
+      exportRef.style.width = prevWidth
+      exportRef.style.maxWidth = prevMaxWidth
+      exportRef.style.margin = prevMargin
+      exportRef.style.boxSizing = prevBoxSizing
     }
   }
 
@@ -527,7 +541,7 @@ function App() {
                 取り消し (全アイコンを消す)
               </button>
               <button class="btn btn-success" type="button" onClick={downloadPng}>
-                PNG ダウンロード (高画質)
+                PNG ダウンロード
               </button>
             </div>
 
@@ -571,7 +585,7 @@ function App() {
         </div>
       </section>
 
-      <section class="chart-wrap" classList={{ 'is-exporting': isExporting() }} ref={exportRef}>
+      <section class="chart-wrap" ref={exportRef}>
         <div class="label-top">{topLabel()}</div>
         <div class="label-bottom">{bottomLabel()}</div>
         <div class="label-left">{leftLabel()}</div>

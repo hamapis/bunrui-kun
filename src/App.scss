@@ -67,9 +67,9 @@
 
 .chart-wrap {
   position: relative;
-  width: min(100%, 980px);
+  width: min(100%, 900px);
   margin: 0 auto;
-  padding: 2.6rem 3.1rem;
+  padding: 2.2rem 2.8rem;
   border-radius: 1rem;
   background:
     radial-gradient(circle at 15% 15%, #ffe8d7 0, #ffe8d700 35%),
@@ -77,25 +77,11 @@
     linear-gradient(145deg, #fffdf7 0%, #fff6ec 52%, #fef8f3 100%);
 }
 
-.chart-wrap.is-exporting {
-  width: 1600px !important;
-  max-width: none !important;
-  margin: 0 !important;
-  padding: 2.6rem 3.1rem !important;
-}
-
-.chart-wrap.is-exporting .label-top,
-.chart-wrap.is-exporting .label-bottom,
-.chart-wrap.is-exporting .label-left,
-.chart-wrap.is-exporting .label-right {
-  font-size: 1.34rem !important;
-}
-
 .chart-board {
   position: relative;
   width: 100%;
   aspect-ratio: 16 / 9;
-  border: 6px solid var(--frame);
+  border: 7px solid var(--frame);
   border-radius: 0.7rem;
   background-color: var(--paper);
   overflow: hidden;
@@ -167,7 +153,7 @@
 .label-right {
   position: absolute;
   font-weight: 700;
-  font-size: clamp(1.06rem, 1.9vw, 1.36rem);
+  font-size: clamp(1.1rem, 1.95vw, 1.4rem);
   color: #5d2f23;
   background: rgb(255 247 235 / 88%);
   border: 1px solid rgb(153 102 78 / 35%);
@@ -187,11 +173,11 @@
 }
 
 .label-top {
-  top: 0.1rem;
+  top: 0;
 }
 
 .label-bottom {
-  bottom: 0;
+  bottom: -0.05rem;
 }
 
 .label-left,
@@ -206,11 +192,11 @@
 }
 
 .label-left {
-  left: 0.2rem;
+  left: 0.1rem;
 }
 
 .label-right {
-  right: 0.2rem;
+  right: 0.1rem;
 }
 
 .toast-wrap {
@@ -235,7 +221,7 @@
 
 @media (max-width: 768px) {
   .chart-wrap {
-    padding: 2.4rem 2.1rem;
+    padding: 2.1rem 1.8rem;
   }
 
   .label-left,
