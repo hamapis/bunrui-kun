@@ -66,15 +66,47 @@
 }
 
 .chart-wrap {
+  --wrap-top-space: 4.25rem;
+  --wrap-side-space: 2.8rem;
+  --wrap-bottom-space: 2.2rem;
+
   position: relative;
   width: min(100%, 900px);
   margin: 0 auto;
-  padding: 2.2rem 2.8rem;
+  padding: var(--wrap-top-space) var(--wrap-side-space) var(--wrap-bottom-space);
   border-radius: 1rem;
   background:
     radial-gradient(circle at 15% 15%, #ffe8d7 0, #ffe8d700 35%),
     radial-gradient(circle at 86% 86%, #e8f6ff 0, #e8f6ff00 32%),
     linear-gradient(145deg, #fffdf7 0%, #fff6ec 52%, #fef8f3 100%);
+}
+
+.export-title {
+  position: absolute;
+  left: 50%;
+  top: 0.4rem;
+  transform: translateX(-50%);
+  width: calc(100% - 9.5rem);
+  text-align: center;
+  font-weight: 900;
+  font-size: clamp(1.45rem, 2.9vw, 2.2rem);
+  line-height: 1.15;
+  color: #4a251a;
+  text-shadow: 0 1px 0 rgb(255 255 255 / 98%);
+  letter-spacing: 0.01em;
+}
+
+.export-hashtag {
+  position: absolute;
+  top: 0.65rem;
+  right: 0.9rem;
+  color: #7b6157;
+  background: rgb(255 247 235 / 70%);
+  border: 1px solid rgb(153 102 78 / 25%);
+  border-radius: 9999px;
+  padding: 0.18rem 0.52rem;
+  font-size: 0.92rem;
+  font-weight: 700;
 }
 
 .chart-board {
@@ -173,7 +205,7 @@
 }
 
 .label-top {
-  top: 0;
+  top: 2.95rem;
 }
 
 .label-bottom {
@@ -221,12 +253,30 @@
 
 @media (max-width: 768px) {
   .chart-wrap {
-    padding: 2.1rem 1.8rem;
+    --wrap-top-space: 3.95rem;
+    --wrap-side-space: 1.8rem;
+    --wrap-bottom-space: 2rem;
   }
 
   .label-left,
   .label-right {
     font-size: 1rem;
     padding: 0.58rem 0.3rem;
+  }
+
+  .export-title {
+    width: calc(100% - 7.5rem);
+    font-size: 1.35rem;
+    top: 0.52rem;
+  }
+
+  .label-top {
+    top: 2.65rem;
+  }
+
+  .export-hashtag {
+    top: 0.74rem;
+    right: 0.62rem;
+    font-size: 0.82rem;
   }
 }

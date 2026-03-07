@@ -25,6 +25,7 @@ type PersistedState = {
   b: string
   l: string
   r: string
+  tt: string
   i: Array<{
     x: string
     px: number
@@ -33,31 +34,26 @@ type PersistedState = {
   }>
 }
 
+type PersistedStateV1 = Omit<PersistedState, 'tt'>
+
 const DEFAULT_ICON_SIZE = 84
-const MAX_ICONS = 16
+const MAX_ICONS = 32
 const STATE_VERSION = 1
 const STATE_QUERY_KEY = 'state'
+const QUERY_VERSION_KEY = 'qv'
+const CURRENT_QUERY_VERSION = 2
 
 const DEFAULT_TOP_LABEL = '憧れ'
 const DEFAULT_BOTTOM_LABEL = '親近感'
 const DEFAULT_LEFT_LABEL = 'ゆるめ'
 const DEFAULT_RIGHT_LABEL = 'きりっと'
+const DEFAULT_EXPORT_TITLE = 'フォロワーの印象は...'
 
 function avatarUrlFromXId(xId: string) {
   return `https://unavatar.io/x/${encodeURIComponent(xId)}`
 }
 
-function decodeStateParam(raw: string): PersistedState | null {
-  const decompressed = decompressFromEncodedURIComponent(raw)
-  if (decompressed) {
-    try {
-      return JSON.parse(decompressed) as PersistedState
-    } catch {
-      return null
-    }
-  }
-
-  // Backward compatibility: allow old plain JSON query values.
+function decodeLegacyInitialState(raw: string): PersistedState | null {
   try {
     const legacy = JSON.parse(raw) as {
       version?: number
@@ -101,11 +97,59 @@ function decodeStateParam(raw: string): PersistedState | null {
       b: legacy.bottomLabel ?? DEFAULT_BOTTOM_LABEL,
       l: legacy.leftLabel ?? DEFAULT_LEFT_LABEL,
       r: legacy.rightLabel ?? DEFAULT_RIGHT_LABEL,
+      tt: DEFAULT_EXPORT_TITLE,
       i: items,
     }
   } catch {
     return null
   }
+}
+
+function decodeCompressedStateV1(raw: string): PersistedState | null {
+  const decompressed = decompressFromEncodedURIComponent(raw)
+  if (!decompressed) {
+    return null
+  }
+
+  try {
+    const parsed = JSON.parse(decompressed) as PersistedStateV1
+    return {
+      ...parsed,
+      tt: DEFAULT_EXPORT_TITLE,
+    }
+  } catch {
+    return null
+  }
+}
+
+function decodeCompressedStateV2(raw: string): PersistedState | null {
+  const decompressed = decompressFromEncodedURIComponent(raw)
+  if (!decompressed) {
+    return null
+  }
+
+  try {
+    return JSON.parse(decompressed) as PersistedState
+  } catch {
+    return null
+  }
+}
+
+function decodeStateParam(raw: string, qv: string | null): PersistedState | null {
+  if (!qv) {
+    // Initial format (qv absent): plain legacy JSON.
+    return decodeLegacyInitialState(raw) ?? decodeCompressedStateV1(raw)
+  }
+
+  if (qv === '1') {
+    return decodeCompressedStateV1(raw)
+  }
+
+  if (qv === '2') {
+    return decodeCompressedStateV2(raw)
+  }
+
+  return null
 }
 
 function clamp(value: number, min: number, max: number) {
@@ -120,6 +164,7 @@ function App() {
   const [bottomLabel, setBottomLabel] = createSignal(DEFAULT_BOTTOM_LABEL)
   const [leftLabel, setLeftLabel] = createSignal(DEFAULT_LEFT_LABEL)
   const [rightLabel, setRightLabel] = createSignal(DEFAULT_RIGHT_LABEL)
+  const [chartTitle, setChartTitle] = createSignal(DEFAULT_EXPORT_TITLE)
   const [xId, setXId] = createSignal('')
   const [icons, setIcons] = createSignal<IconState[]>([])
   const [toast, setToast] = createSignal<ToastState | null>(null)
@@ -162,7 +207,7 @@ function App() {
         return
       }
 
-      const parsed = decodeStateParam(raw)
+      const parsed = decodeStateParam(raw, params.get(QUERY_VERSION_KEY))
       if (!parsed || parsed.v !== STATE_VERSION) {
         return
       }
@@ -171,6 +216,7 @@ function App() {
       setBottomLabel(parsed.b ?? DEFAULT_BOTTOM_LABEL)
       setLeftLabel(parsed.l ?? DEFAULT_LEFT_LABEL)
       setRightLabel(parsed.r ?? DEFAULT_RIGHT_LABEL)
+      setChartTitle(parsed.tt ?? DEFAULT_EXPORT_TITLE)
 
       const restoredIcons: IconState[] = Array.isArray(parsed.i)
         ? parsed.i.slice(0, MAX_ICONS).map((icon): IconState => ({
@@ -208,12 +254,14 @@ function App() {
       b: bottomLabel(),
       l: leftLabel(),
       r: rightLabel(),
+      tt: chartTitle(),
       i: shareableIcons,
     }
 
     try {
       const params = new URLSearchParams(window.location.search)
       const isDefaultState =
+        chartTitle() === DEFAULT_EXPORT_TITLE &&
         topLabel() === DEFAULT_TOP_LABEL &&
         bottomLabel() === DEFAULT_BOTTOM_LABEL &&
         leftLabel() === DEFAULT_LEFT_LABEL &&
@@ -222,8 +270,10 @@ function App() {
 
       if (isDefaultState) {
         params.delete(STATE_QUERY_KEY)
+        params.delete(QUERY_VERSION_KEY)
       } else {
         params.set(STATE_QUERY_KEY, compressToEncodedURIComponent(JSON.stringify(snapshot)))
+        params.set(QUERY_VERSION_KEY, String(CURRENT_QUERY_VERSION))
       }
 
       const query = params.toString()
@@ -239,6 +289,7 @@ function App() {
     setBottomLabel(DEFAULT_BOTTOM_LABEL)
     setLeftLabel(DEFAULT_LEFT_LABEL)
     setRightLabel(DEFAULT_RIGHT_LABEL)
+    setChartTitle(DEFAULT_EXPORT_TITLE)
     setXId('')
     setIcons([])
     setIsDragging(false)
@@ -473,6 +524,16 @@ function App() {
       <section class="controls card shadow-sm mb-4">
         <div class="card-body">
           <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label">表タイトル（出力画像に含まれます）</label>
+              <input
+                class="form-control"
+                value={chartTitle()}
+                onInput={(event) => setChartTitle(event.currentTarget.value)}
+                placeholder="例: フォロワーの印象は..."
+              />
+            </div>
+
             <div class="col-sm-6 col-lg-3">
               <label class="form-label">上ラベル</label>
               <input
@@ -586,6 +647,7 @@ function App() {
       </section>
 
       <section class="chart-wrap" ref={exportRef}>
+        <div class="export-title">{chartTitle()}</div>
         <div class="label-top">{topLabel()}</div>
         <div class="label-bottom">{bottomLabel()}</div>
         <div class="label-left">{leftLabel()}</div>
@@ -617,6 +679,7 @@ function App() {
             )}
           </For>
         </div>
+        <div class="export-hashtag">#分類くん</div>
       </section>
 
       <Show when={toast()}>
